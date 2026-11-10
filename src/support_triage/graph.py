@@ -2,6 +2,7 @@
 
 The first node calls ``support_triage.corpus.retrieve``. The following nodes are
 the model-and-tools cycle, bound only to ``lookup_order`` and ``route_ticket``.
+A citation gate then rejects a reply whose article ids were not retrieved.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from langgraph.runtime import Runtime
 
 from . import corpus
 from .context import Context
+from .evaluators import citation_subset_ok, model_reply_text
 from .state import InputState, State
 from .tools import lookup_order, route_ticket
 from .trajectory import model_called_route_ticket
@@ -29,6 +31,7 @@ from .utils import load_chat_model
 FALLBACK_REASON = (
     "The model omitted route_ticket or hit the step limit. The ticket was routed to human."
 )
+CITATION_REJECTION = "Rejected: the reply cites an article that was not retrieved."
 
 _model_override: ContextVar[BaseChatModel | None] = ContextVar(
     "support_triage_model_override", default=None
@@ -150,9 +153,7 @@ async def call_model(state: State, runtime: Runtime[Context]) -> dict[str, Any]:
         )
     if not must_stop:
         return {"messages": [response]}
-    outcome = finish(State(messages=[*state.messages, response]))
-    extra = outcome.pop("messages", [])
-    return {**outcome, "messages": [response, *extra]}
+    return _finalize_stop(state, response)
 
 
 def _tool_payload(message: ToolMessage) -> dict[str, Any]:
@@ -206,11 +207,86 @@ def finish(state: State) -> dict[str, Any]:
     }
 
 
+def _accepted_citation_ids(messages: Sequence[AnyMessage]) -> list[str]:
+    results = {
+        message.tool_call_id: message for message in messages if isinstance(message, ToolMessage)
+    }
+    chosen: list[str] = []
+    for message in messages:
+        if not isinstance(message, AIMessage):
+            continue
+        for call in message.tool_calls:
+            if call.get("name") != "route_ticket":
+                continue
+            result = results.get(str(call.get("id", "")))
+            if result is None or _tool_payload(result).get("accepted") is not True:
+                continue
+            raw_ids = call.get("args", {}).get("citation_ids", [])
+            if isinstance(raw_ids, list):
+                chosen = [str(item) for item in raw_ids]
+    return chosen
+
+
+def citation_gate(state: State) -> dict[str, Any]:
+    """Reject a reply whose citations were not retrieved.
+
+    The ids passed to ``route_ticket`` must match the ids in the reply and be
+    a subset of the retrieved passage ids. A failure leaves the recorded route
+    in place and does not accept the reply.
+
+    Args:
+        state: The conversation after a route was accepted.
+
+    Returns:
+        A cleared rejection, or a rejected reply.
+    """
+    retrieved_ids = [passage["id"] for passage in state.passages]
+    if citation_subset_ok(
+        _accepted_citation_ids(state.messages),
+        retrieved_ids,
+        model_reply_text(state.messages),
+    ):
+        return {"citation_rejection": ""}
+    return {
+        "accepted": False,
+        "citation_rejection": CITATION_REJECTION,
+        "messages": [
+            AIMessage(content=CITATION_REJECTION, response_metadata={"source": "citation_gate"})
+        ],
+    }
+
+
+def _finalize_stop(state: State, response: AIMessage) -> dict[str, Any]:
+    """Apply the route decision and citation gate inside the last allowed step.
+
+    Args:
+        state: The state before the final model message is appended.
+        response: The model message for this step.
+
+    Returns:
+        The combined state update, including any gate rejection.
+    """
+    outcome = finish(State(messages=[*state.messages, response]))
+    extra = outcome.pop("messages", [])
+    messages: list[AnyMessage] = [response]
+    if isinstance(extra, list):
+        messages.extend(message for message in extra if isinstance(message, AIMessage))
+    if not outcome.get("accepted"):
+        return {**outcome, "messages": messages}
+    preview = State(messages=[*state.messages, *messages], passages=list(state.passages))
+    gated = citation_gate(preview)
+    gate_extra = gated.pop("messages", [])
+    if isinstance(gate_extra, list):
+        messages.extend(message for message in gate_extra if isinstance(message, AIMessage))
+    return {**outcome, **gated, "messages": messages}
+
+
 builder = StateGraph(State, input_schema=InputState, context_schema=Context)
 builder.add_node("retrieve", retrieve)
 builder.add_node("call_model", call_model)
 builder.add_node("tools", ToolNode([lookup_order, route_ticket]))
 builder.add_node("finish", finish)
+builder.add_node("citation_gate", citation_gate)
 builder.add_edge("__start__", "retrieve")
 builder.add_edge("retrieve", "call_model")
 
@@ -236,7 +312,22 @@ def route_model_output(state: State) -> Literal["__end__", "finish", "tools"]:
     return "tools"
 
 
+def route_after_finish(state: State) -> Literal["citation_gate", "__end__"]:
+    """Send an accepted route through the citation gate.
+
+    Args:
+        state: The conversation after finish.
+
+    Returns:
+        ``citation_gate`` when a route was accepted, otherwise ``__end__``.
+    """
+    if state.accepted:
+        return "citation_gate"
+    return "__end__"
+
+
 builder.add_conditional_edges("call_model", route_model_output)
 builder.add_edge("tools", "call_model")
-builder.add_edge("finish", "__end__")
+builder.add_conditional_edges("finish", route_after_finish)
+builder.add_edge("citation_gate", "__end__")
 graph = builder.compile(name="support-triage")

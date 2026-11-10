@@ -1,6 +1,6 @@
 # Documentation
 
-Decisions live in `adr/`. Evaluation notes will live in `evaluations/`. Acceptance criteria, and the implementation plan, are on [issue 1](https://github.com/gabezurita/support-triage/issues/1).
+Decisions live in [`adr/`](adr/). Evaluation notes live in [`evaluations/`](evaluations/). Later implementation plans would live in `plans/`. Acceptance criteria, and the implementation plan, are on [issue 1](https://github.com/gabezurita/support-triage/issues/1).
 
 ## Directory taxonomy
 
@@ -16,4 +16,4 @@ Decisions live in `adr/`. Evaluation notes will live in `evaluations/`. Acceptan
 
 ## Evaluations
 
-- [EVAL-001: Citation gate](evaluations/EVAL-001-citation-gate.md) records the before scores. The after column is added with the gate.
+- [EVAL-001: Citation gate](evaluations/EVAL-001-citation-gate.md) records the before scores, the after scores, and the delta.
