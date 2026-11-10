@@ -176,3 +176,10 @@ def test_step_limit_without_route_ticket_falls_back_to_human() -> None:
     assert result["fallback_reason"] == FALLBACK_REASON
     assert not model_called_route_ticket(messages)
     assert recorded_routes() == [{"queue": "human", "citation_ids": []}]
+
+
+def test_ticket_text_handles_content_blocks() -> None:
+    from support_triage.graph import ticket_text
+
+    msg = HumanMessage(content=[{"type": "text", "text": "Why was I charged twice?"}])
+    assert ticket_text([msg]) == "Why was I charged twice?"

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any, Literal, cast
 
@@ -29,7 +30,9 @@ FALLBACK_REASON = (
     "The model omitted route_ticket or hit the step limit. The ticket was routed to human."
 )
 
-_model_override: BaseChatModel | None = None
+_model_override: ContextVar[BaseChatModel | None] = ContextVar(
+    "support_triage_model_override", default=None
+)
 
 
 @contextmanager
@@ -42,18 +45,17 @@ def use_chat_model(model: BaseChatModel) -> Iterator[None]:
     Yields:
         Control back to the caller while the override is installed.
     """
-    global _model_override
-    previous = _model_override
-    _model_override = model
+    token = _model_override.set(model)
     try:
         yield
     finally:
-        _model_override = previous
+        _model_override.reset(token)
 
 
 def _chat_model(name: str) -> BaseChatModel:
-    if _model_override is not None:
-        return _model_override
+    override = _model_override.get()
+    if override is not None:
+        return override
     return load_chat_model(name)
 
 
@@ -68,8 +70,16 @@ def ticket_text(messages: Sequence[AnyMessage]) -> str:
     """
     parts: list[str] = []
     for message in messages:
-        if isinstance(message, HumanMessage) and isinstance(message.content, str):
-            parts.append(message.content)
+        if isinstance(message, HumanMessage):
+            content = message.content
+            if isinstance(content, str):
+                parts.append(content)
+            elif isinstance(content, list):
+                for item in content:
+                    if isinstance(item, str):
+                        parts.append(item)
+                    elif isinstance(item, dict) and isinstance(item.get("text"), str):
+                        parts.append(item["text"])
     return "\n".join(parts)
 
 
