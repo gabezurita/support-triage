@@ -1,5 +1,6 @@
 """Order lookup and ticket routing without a model."""
 
+from collections.abc import Generator
 from datetime import date
 
 import pytest
@@ -11,6 +12,13 @@ from support_triage.tools import (
     recorded_routes,
     route_ticket,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_routes() -> Generator[None, None, None]:
+    clear_recorded_routes()
+    yield
+    clear_recorded_routes()
 
 
 def test_lookup_order_1001_returns_a_recent_fixture() -> None:
@@ -39,14 +47,12 @@ def test_lookup_order_9999_is_not_found_without_shipment_fields() -> None:
 
 @pytest.mark.parametrize("queue", ["billing", "shipping", "refunds", "human"])
 def test_route_ticket_records_each_valid_queue(queue: str) -> None:
-    clear_recorded_routes()
     result = route_ticket(queue, ["billing-001"])
     assert result["accepted"] is True
     assert recorded_routes() == [{"queue": queue, "citation_ids": ["billing-001"]}]
 
 
 def test_route_ticket_rejects_unknown_queue_and_records_nothing() -> None:
-    clear_recorded_routes()
     route_ticket("billing", ["billing-001"])
     before = recorded_routes()
     result = route_ticket("executive", ["billing-001"])
@@ -55,7 +61,6 @@ def test_route_ticket_rejects_unknown_queue_and_records_nothing() -> None:
 
 
 def test_route_ticket_does_not_change_the_order_fixture() -> None:
-    clear_recorded_routes()
     before = lookup_order("1001")
     route_ticket("refunds", ["refunds-001"])
     assert lookup_order("1001") == before

@@ -1,6 +1,6 @@
 """Corpus retrieval without a model."""
 
-from support_triage.corpus import retrieve
+from support_triage.corpus import _KEYWORDS, _read_article, retrieve
 
 
 def test_billing_ticket_returns_billing_article_not_shipping() -> None:
@@ -21,3 +21,10 @@ def test_refund_article_states_thirty_day_window() -> None:
     text = matches[0].text.casefold()
     assert "30" in text
     assert "day" in text
+
+
+def test_all_configured_articles_exist_in_package() -> None:
+    for article_id in _KEYWORDS:
+        text = _read_article(article_id)
+        assert text.strip()
+        assert article_id in text

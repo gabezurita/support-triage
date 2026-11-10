@@ -1,9 +1,7 @@
 """Deterministic retrieval over the checked-in help center."""
 
+import importlib.resources
 from dataclasses import dataclass
-from pathlib import Path
-
-_HELP_CENTER = Path(__file__).resolve().parents[2] / "data" / "help_center"
 
 _KEYWORDS: dict[str, tuple[str, ...]] = {
     "billing-001": ("charged", "charge", "billing", "invoice", "payment"),
@@ -18,6 +16,12 @@ class Passage:
 
     id: str
     text: str
+
+
+def _read_article(article_id: str) -> str:
+    """Read article text from package resources."""
+    ref = importlib.resources.files("support_triage.help_center").joinpath(f"{article_id}.md")
+    return ref.read_text(encoding="utf-8")
 
 
 def retrieve(ticket: str) -> list[Passage]:
@@ -35,6 +39,5 @@ def retrieve(ticket: str) -> list[Passage]:
     passages: list[Passage] = []
     for article_id, keywords in _KEYWORDS.items():
         if any(keyword.casefold() in text for keyword in keywords):
-            article = (_HELP_CENTER / f"{article_id}.md").read_text(encoding="utf-8")
-            passages.append(Passage(id=article_id, text=article))
+            passages.append(Passage(id=article_id, text=_read_article(article_id)))
     return passages
