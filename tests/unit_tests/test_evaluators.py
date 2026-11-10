@@ -66,6 +66,25 @@ def test_trajectory_missing_route_ticket_fails() -> None:
     assert trajectory_ok(messages, lookup_required=True, passages_present=True) is False
 
 
+def test_trajectory_missing_required_lookup_fails() -> None:
+    messages: list[AnyMessage] = [
+        HumanMessage(content="Where is order 9999?"),
+        AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "name": "route_ticket",
+                    "args": {"queue": "human", "citation_ids": ["shipping-001"]},
+                    "id": "route-1",
+                    "type": "tool_call",
+                }
+            ],
+        ),
+        AIMessage(content="Order 9999 was not found."),
+    ]
+    assert trajectory_ok(messages, lookup_required=True, passages_present=True) is False
+
+
 def test_citation_outside_retrieved_ids_fails() -> None:
     assert citation_subset_ok(["shipping-001"], ["billing-001"], "Citations: shipping-001") is False
 
@@ -89,6 +108,12 @@ def test_live_judge_stays_offline_without_opt_in(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setenv("ANTHROPIC_API_KEY", "present")
     assert live_judge_status() == "skipped"
     assert os.environ["ANTHROPIC_API_KEY"] == "present"
+
+
+def test_live_judge_enables_with_key_and_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUPPORT_TRIAGE_LIVE_JUDGE", "1")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "present")
+    assert live_judge_status() == "enabled"
 
 
 def test_dataset_before_scores_and_note() -> None:

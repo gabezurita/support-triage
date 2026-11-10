@@ -151,7 +151,7 @@ def _run_row(row: dict[str, Any]) -> CaseResult:
         trajectory_ok=trajectory_ok(
             messages,
             lookup_required=bool(row["lookup_order_required"]),
-            passages_present=isinstance(passages, list),
+            passages_present=bool(passages),
         ),
         accepted=accepted,
         grounded_outcome=grounded_outcome(accepted, citations_ok),
