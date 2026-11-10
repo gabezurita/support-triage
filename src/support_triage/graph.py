@@ -218,7 +218,10 @@ def _accepted_citation_ids(messages: Sequence[AnyMessage]) -> list[str]:
         for call in message.tool_calls:
             if call.get("name") != "route_ticket":
                 continue
-            result = results.get(str(call.get("id", "")))
+            call_id = call.get("id")
+            if not call_id:
+                continue
+            result = results.get(str(call_id))
             if result is None or _tool_payload(result).get("accepted") is not True:
                 continue
             raw_ids = call.get("args", {}).get("citation_ids", [])
@@ -246,7 +249,7 @@ def citation_gate(state: State) -> dict[str, Any]:
         retrieved_ids,
         model_reply_text(state.messages),
     ):
-        return {"citation_rejection": ""}
+        return {"accepted": True, "citation_rejection": ""}
     return {
         "accepted": False,
         "citation_rejection": CITATION_REJECTION,

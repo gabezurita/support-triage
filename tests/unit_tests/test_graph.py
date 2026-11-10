@@ -109,7 +109,7 @@ def test_billing_ticket_retrieves_injects_and_routes() -> None:
     assert finish_update["accepted"] is True
     gate_update = updates[-1]["citation_gate"]
     assert isinstance(gate_update, dict)
-    assert gate_update.get("accepted", True) is True
+    assert gate_update["accepted"] is True
 
 
 def test_order_9999_is_not_found_and_reply_has_no_tracking_number() -> None:
@@ -210,3 +210,26 @@ def test_ticket_text_handles_content_blocks() -> None:
 
     msg = HumanMessage(content=[{"type": "text", "text": "Why was I charged twice?"}])
     assert ticket_text([msg]) == "Why was I charged twice?"
+
+
+def test_step_limit_with_accepted_route_runs_citation_gate() -> None:
+    reply = (
+        "A second charge is a pending authorization or a duplicate capture. Citations: billing-001"
+    )
+    model = ScriptedChatModel(
+        responses=[
+            _tool_message(
+                "route_ticket",
+                {"queue": "billing", "citation_ids": ["billing-001"]},
+                "route-billing",
+            ),
+            AIMessage(content=reply),
+        ]
+    )
+    result = _run(model, BILLING_TICKET, recursion_limit=5)
+    messages = result["messages"]
+    assert isinstance(messages, list)
+    assert result["accepted"] is True
+    assert result["trajectory_ok"] is True
+    assert result["citation_rejection"] == ""
+    assert recorded_routes() == [{"queue": "billing", "citation_ids": ["billing-001"]}]
