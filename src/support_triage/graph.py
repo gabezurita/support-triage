@@ -1,7 +1,6 @@
 """Reasoning and action loop for support triage.
 
-The scaffold is the react-agent tool cycle with no tools bound.
-Retrieval and the routing tools land in later units.
+The loop is bound to the triage tools. Retrieval is added in front of this loop later.
 """
 
 from datetime import UTC, datetime
