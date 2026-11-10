@@ -1,0 +1,13 @@
+{
+  "judge": "fixture",
+  "results": [
+    {"id": "billing-double-charge-grounded", "grounded": true, "helpful": true},
+    {"id": "billing-double-charge-ungrounded", "grounded": false, "helpful": false},
+    {"id": "late-refund-grounded", "grounded": true, "helpful": true},
+    {"id": "late-refund-ungrounded", "grounded": false, "helpful": false},
+    {"id": "missing-order-9999-grounded", "grounded": true, "helpful": true},
+    {"id": "missing-order-9999-ungrounded", "grounded": false, "helpful": false},
+    {"id": "multi-article-grounded", "grounded": true, "helpful": true},
+    {"id": "multi-article-ungrounded", "grounded": false, "helpful": false}
+  ]
+}

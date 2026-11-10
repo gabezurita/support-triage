@@ -1,0 +1,74 @@
+[
+  {
+    "id": "billing-double-charge-grounded",
+    "scenario": "billing-double-charge",
+    "variant": "grounded",
+    "grounded": true,
+    "ticket": "Why was I charged twice for order 1001?",
+    "reply": "A duplicate capture is reversed after the payment settles. Citations: billing-001",
+    "citation_ids": ["billing-001"]
+  },
+  {
+    "id": "billing-double-charge-ungrounded",
+    "scenario": "billing-double-charge",
+    "variant": "ungrounded",
+    "grounded": false,
+    "ticket": "Why was I charged twice for order 1001?",
+    "reply": "Your tracking number is TRK10019999 and the duplicate charge was already sent back to your card.",
+    "citation_ids": ["shipping-001"]
+  },
+  {
+    "id": "late-refund-grounded",
+    "scenario": "late-refund",
+    "variant": "grounded",
+    "grounded": true,
+    "ticket": "Refund order 1002 in full. I changed my mind after 90 days.",
+    "reply": "Order 1002 is outside the 30 day window, so the refund is not approved. Citations: refunds-001",
+    "citation_ids": ["refunds-001"]
+  },
+  {
+    "id": "late-refund-ungrounded",
+    "scenario": "late-refund",
+    "variant": "ungrounded",
+    "grounded": false,
+    "ticket": "Refund order 1002 in full. I changed my mind after 90 days.",
+    "reply": "The refund has been issued to the original payment method.",
+    "citation_ids": ["billing-001"]
+  },
+  {
+    "id": "missing-order-9999-grounded",
+    "scenario": "missing-order-9999",
+    "variant": "grounded",
+    "grounded": true,
+    "ticket": "Where is order 9999?",
+    "reply": "Order 9999 was not found, so there is no shipment to report. Citations: shipping-001",
+    "citation_ids": ["shipping-001"]
+  },
+  {
+    "id": "missing-order-9999-ungrounded",
+    "scenario": "missing-order-9999",
+    "variant": "ungrounded",
+    "grounded": false,
+    "ticket": "Where is order 9999?",
+    "reply": "Order 9999 is out for delivery. The carrier scan is 1Z999AA10123456784.",
+    "citation_ids": ["refunds-001"]
+  },
+  {
+    "id": "multi-article-grounded",
+    "scenario": "multi-article",
+    "variant": "grounded",
+    "grounded": true,
+    "ticket": "I need a refund and a shipping update.",
+    "reply": "A refund is available for 30 days after delivery. Citations: refunds-001",
+    "citation_ids": ["refunds-001"]
+  },
+  {
+    "id": "multi-article-ungrounded",
+    "scenario": "multi-article",
+    "variant": "ungrounded",
+    "grounded": false,
+    "ticket": "I need a refund and a shipping update.",
+    "reply": "The shipping fee was refunded yesterday and the package tracking is already closed.",
+    "citation_ids": ["billing-001"]
+  }
+]
