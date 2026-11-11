@@ -24,6 +24,8 @@ Run the offline suite with:
 uv run pytest
 ```
 
+The Studio walkthrough is [docs/demo.md](docs/demo.md). It covers the tunnel Chrome needs, the four tickets, and where the citation-gate rejection is recorded.
+
 ## Graph
 
 Retrieval runs before the model. The model may call `lookup_order` and `route_ticket`. The citation gate rejects a reply that cites an article the retrieval step did not return. On a step limit, that same decision runs inside the model node so the run can still stop.
@@ -40,6 +42,26 @@ flowchart TD
     finish -->|no accepted route| endNode
     citation_gate --> endNode
 ```
+
+Each name in the diagram is one box or one arrow.
+
+Boxes:
+
+- [`start`](src/support_triage/graph.py#L312) hands the ticket to `retrieve`.
+- [`retrieve`](src/support_triage/graph.py#L120) searches the help center and stores the matches on `passages`.
+- [`call_model`](src/support_triage/graph.py#L137) reads those passages. It may call `lookup_order` and `route_ticket`.
+- [`tools`](src/support_triage/graph.py#L309) runs [`lookup_order`](src/support_triage/tools.py#L54) and [`route_ticket`](src/support_triage/tools.py#L70), then returns to `call_model`.
+- [`finish`](src/support_triage/graph.py#L200) records whether `route_ticket` was accepted.
+- [`citation_gate`](src/support_triage/graph.py#L251) accepts the reply when the ids passed to `route_ticket` are among the retrieved articles and the reply cites that same set.
+- [`end`](src/support_triage/graph.py#L351-L354) stops the run.
+
+Arrows:
+
+- [`tool call`](src/support_triage/graph.py#L334) sends `lookup_order` or `route_ticket` to `tools`, which returns to `call_model`.
+- [`reply`](src/support_triage/graph.py#L333) means the model stopped calling tools, so the run goes to `finish`.
+- [`accepted`](src/support_triage/graph.py#L346) means `route_ticket` recorded a queue. The run goes through `citation_gate`, then to `end`.
+- [`no accepted route`](src/support_triage/graph.py#L217-L225) means the model skipped `route_ticket`, or the queue was rejected. A skipped call records `human` with no citation ids, sets `accepted` false, and fails the trajectory check. A rejected queue records nothing. The run goes to `end` and skips the gate.
+- [`step limit`](src/support_triage/graph.py#L166) means too few steps remain for another node. `call_model` applies the `finish` and `citation_gate` decision itself, and the arrow goes to [`end`](src/support_triage/graph.py#L330).
 
 ## Traces
 

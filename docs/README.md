@@ -17,3 +17,7 @@ Decisions live in [`adr/`](adr/). Evaluation notes live in [`evaluations/`](eval
 ## Evaluations
 
 - [EVAL-001: Citation gate](evaluations/EVAL-001-citation-gate.md) records the before scores, the after scores, and the delta.
+
+## Demo
+
+- [Demo](demo.md) is the Studio walkthrough. The graph diagram stays in the [README](../README.md#graph).
