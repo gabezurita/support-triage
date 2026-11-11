@@ -16,4 +16,4 @@ Decisions live in `adr/`. Evaluation notes will live in `evaluations/`. Acceptan
 
 ## Evaluations
 
-The citation-gate note will be `evaluations/EVAL-001-citation-gate.md`. That directory is created with the note.
+- [EVAL-001: Citation gate](evaluations/EVAL-001-citation-gate.md) records the before scores. The after column is added with the gate.

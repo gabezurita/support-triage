@@ -1,0 +1,77 @@
+[
+  {
+    "id": "billing-double-charge",
+    "ticket": "Why was I charged twice for order 1001?",
+    "expected_queue": "billing",
+    "expected_citation_ids": ["billing-001"],
+    "lookup_order_required": true,
+    "script": [
+      {"type": "tool", "name": "lookup_order", "args": {"order_id": "1001"}},
+      {
+        "type": "tool",
+        "name": "route_ticket",
+        "args": {"queue": "billing", "citation_ids": ["billing-001"]}
+      },
+      {
+        "type": "text",
+        "content": "A duplicate capture is reversed after the payment settles. Citations: billing-001"
+      }
+    ]
+  },
+  {
+    "id": "late-refund",
+    "ticket": "Refund order 1002 in full. I changed my mind after 90 days.",
+    "expected_queue": "human",
+    "expected_citation_ids": ["refunds-001"],
+    "lookup_order_required": true,
+    "script": [
+      {"type": "tool", "name": "lookup_order", "args": {"order_id": "1002"}},
+      {
+        "type": "tool",
+        "name": "route_ticket",
+        "args": {"queue": "human", "citation_ids": ["refunds-001"]}
+      },
+      {
+        "type": "text",
+        "content": "The refund window is 30 days after delivery. Order 1002 is outside that window, so the refund is not approved. Citations: refunds-001"
+      }
+    ]
+  },
+  {
+    "id": "missing-order-9999",
+    "ticket": "Where is order 9999?",
+    "expected_queue": "human",
+    "expected_citation_ids": ["shipping-001"],
+    "lookup_order_required": true,
+    "script": [
+      {"type": "tool", "name": "lookup_order", "args": {"order_id": "9999"}},
+      {
+        "type": "tool",
+        "name": "route_ticket",
+        "args": {"queue": "human", "citation_ids": ["shipping-001"]}
+      },
+      {
+        "type": "text",
+        "content": "Order 9999 was not found, so there is no shipment to report. Citations: shipping-001"
+      }
+    ]
+  },
+  {
+    "id": "multi-article",
+    "ticket": "I need a refund and a shipping update.",
+    "expected_queue": "refunds",
+    "expected_citation_ids": ["refunds-001"],
+    "lookup_order_required": false,
+    "script": [
+      {
+        "type": "tool",
+        "name": "route_ticket",
+        "args": {"queue": "refunds", "citation_ids": ["refunds-001", "billing-001"]}
+      },
+      {
+        "type": "text",
+        "content": "A refund is available for 30 days after delivery. Citations: refunds-001, billing-001"
+      }
+    ]
+  }
+]
