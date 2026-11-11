@@ -6,6 +6,7 @@ import os
 from dataclasses import dataclass, field, fields
 
 from . import prompts
+from .providers import resolve_provider
 
 
 @dataclass(kw_only=True)
@@ -23,7 +24,7 @@ class Context:
     )
 
     model: str = field(
-        default="anthropic/claude-sonnet-4-5-20250929",
+        default="google_genai/gemini-2.5-flash",
         metadata={
             "description": (
                 "The name of the language model to use for the agent's main interactions. "
@@ -36,6 +37,10 @@ class Context:
         """Fill unset fields from namespaced environment variables."""
         for context_field in fields(self):
             if not context_field.init:
+                continue
+            if context_field.name == "model" and os.environ.get("SUPPORT_TRIAGE_MODEL") is None:
+                if getattr(self, context_field.name) == context_field.default:
+                    setattr(self, context_field.name, resolve_provider().model_name)
                 continue
             if getattr(self, context_field.name) == context_field.default:
                 env_key = f"SUPPORT_TRIAGE_{context_field.name.upper()}"
