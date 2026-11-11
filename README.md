@@ -16,7 +16,7 @@ cp .env.example .env
 uv run langgraph dev
 ```
 
-`.env.example` names `ANTHROPIC_API_KEY`, `LANGSMITH_API_KEY`, and `LANGSMITH_PROJECT`. A live model call needs `ANTHROPIC_API_KEY`. The unit tests, the trajectory checks, and the dataset evaluation do not.
+Set `SUPPORT_TRIAGE_PROVIDER` to `gemini`, `anthropic`, or `codex`. The default is `gemini`. Gemini reads `GEMINI_API_KEY` or `GOOGLE_API_KEY`. Anthropic reads `ANTHROPIC_API_KEY`. Codex reads `OPENAI_API_KEY` and calls `gpt-5.3-codex`. `.env.example` also names `LANGSMITH_API_KEY` and `LANGSMITH_PROJECT`. The unit tests, the trajectory checks, and the dataset evaluation do not call a provider.
 
 Run the offline suite with:
 
@@ -45,4 +45,4 @@ flowchart TD
 
 When `LANGSMITH_API_KEY` is set, `uv run langgraph dev` sends traces to the LangSmith project named by `LANGSMITH_PROJECT`. The example project name is `support-triage`. Open that project in LangSmith to see the run.
 
-When the key is not set, the offline record is [EVAL-001](docs/evaluations/EVAL-001-citation-gate.md). The dataset, the human labels, and the fixture judge are in `data/evaluation/`.
+The checked-in redacted trace is [data/evaluation/traces/billing-double-charge.json](data/evaluation/traces/billing-double-charge.json). The live judge result is [data/evaluation/live_judge.json](data/evaluation/live_judge.json). The offline record is [EVAL-001](docs/evaluations/EVAL-001-citation-gate.md). The dataset, the human labels, and the fixture judge are in `data/evaluation/`.

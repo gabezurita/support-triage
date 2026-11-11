@@ -36,7 +36,7 @@ The late-refund row passes: order 1002 was delivered 90 days before the as-of da
 
 ## Why these checks exist
 
-The dataset freezes the queue, the citation ids, and the tool trajectory. The gate is the only behavior change between the two columns. The human labels are two replies for each of the four scenarios, one grounded and one not. Agreement with the checked-in fixture judge is 1.00 across those 8 labels. A live judge needs `ANTHROPIC_API_KEY` and `SUPPORT_TRIAGE_LIVE_JUDGE=1`. Without both, the live judge is skipped and this deterministic score still runs.
+The dataset freezes the queue, the citation ids, and the tool trajectory. The gate is the only behavior change between the two columns. The human labels are two replies for each of the four scenarios, one grounded and one not. Agreement with the checked-in fixture judge is 1.00 across those 8 labels. A live judge needs the selected provider's key and `SUPPORT_TRIAGE_LIVE_JUDGE=1`. The default provider is Gemini. Without both, the live judge is skipped and this deterministic score still runs. The completed Gemini run is `data/evaluation/live_judge.json`.
 
 ## Production evaluation
 

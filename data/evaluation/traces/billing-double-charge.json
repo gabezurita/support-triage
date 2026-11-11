@@ -1,0 +1,57 @@
+{
+  "provider": "gemini",
+  "model": "google_genai/gemini-2.5-flash",
+  "ticket": "Why was I charged twice for order 1001?",
+  "passages": [
+    {
+      "id": "billing-001",
+      "text": "# Billing\n\nArticle id: billing-001.\n\nA second charge is either a pending authorization or a duplicate capture. After the payment settles, a duplicate capture is reversed. Route a billing question with this article id.\n"
+    }
+  ],
+  "accepted": false,
+  "trajectory_ok": true,
+  "fallback_reason": "",
+  "citation_rejection": "Rejected: the reply cites an article that was not retrieved.",
+  "routes": [
+    {
+      "queue": "billing",
+      "citation_ids": [
+        "billing-001"
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "type": "human",
+      "content": "Why was I charged twice for order 1001?"
+    },
+    {
+      "type": "ai",
+      "content": "A second charge is either a pending authorization or a duplicate capture. After the payment settles, a duplicate capture is reversed.",
+      "tool_calls": [
+        {
+          "name": "route_ticket",
+          "args": {
+            "citation_ids": [
+              "billing-001"
+            ],
+            "queue": "billing"
+          }
+        }
+      ]
+    },
+    {
+      "type": "tool",
+      "content": "{\"accepted\": true, \"queue\": \"billing\", \"citation_ids\": [\"billing-001\"]}",
+      "name": "route_ticket"
+    },
+    {
+      "type": "ai",
+      "content": ""
+    },
+    {
+      "type": "ai",
+      "content": "Rejected: the reply cites an article that was not retrieved."
+    }
+  ]
+}
