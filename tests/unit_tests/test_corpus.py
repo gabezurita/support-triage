@@ -9,6 +9,11 @@ def test_billing_ticket_returns_billing_article_not_shipping() -> None:
     assert "shipping-001" not in ids
 
 
+def test_track_request_returns_the_shipping_article() -> None:
+    ids = [passage.id for passage in retrieve("Track order 1001")]
+    assert "shipping-001" in ids
+
+
 def test_empty_ticket_returns_no_passages() -> None:
     assert retrieve("") == []
     assert retrieve("   ") == []
