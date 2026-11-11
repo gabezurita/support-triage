@@ -64,3 +64,14 @@ def test_route_ticket_does_not_change_the_order_fixture() -> None:
     before = lookup_order("1001")
     route_ticket("refunds", ["refunds-001"])
     assert lookup_order("1001") == before
+
+
+def test_async_task_inherits_recorded_routes() -> None:
+    import asyncio
+
+    async def _simulate_task() -> None:
+        route_ticket("shipping", ["shipping-001"])
+
+    asyncio.run(_simulate_task())
+    assert recorded_routes() == [{"queue": "shipping", "citation_ids": ["shipping-001"]}]
+

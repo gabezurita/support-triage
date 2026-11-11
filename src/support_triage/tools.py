@@ -39,6 +39,8 @@ class RouteRecord(TypedDict):
 _routes: ContextVar[list[RouteRecord] | None] = ContextVar(
     "support_triage_routes", default=None
 )
+_routes.set([])
+
 
 
 def _route_log() -> list[RouteRecord]:
