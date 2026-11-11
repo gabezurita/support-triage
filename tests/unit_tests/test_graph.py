@@ -12,7 +12,7 @@ from support_triage.context import Context
 from support_triage.graph import FALLBACK_REASON, graph, use_chat_model
 from support_triage.scripted import ScriptedChatModel
 from support_triage.state import InputState
-from support_triage.tools import clear_recorded_routes, recorded_routes
+from support_triage.tools import clear_recorded_routes, recorded_routes, route_ticket
 from support_triage.trajectory import model_called_route_ticket
 
 BILLING_TICKET = "Why was I charged twice for order 1001?"
@@ -202,6 +202,51 @@ def test_step_limit_without_route_ticket_falls_back_to_human() -> None:
     assert result["trajectory_ok"] is False
     assert result["fallback_reason"] == FALLBACK_REASON
     assert not model_called_route_ticket(messages)
+    assert recorded_routes() == [{"queue": "human", "citation_ids": []}]
+
+
+def test_follow_up_without_route_ticket_falls_back_to_human() -> None:
+    prior_route = _tool_message(
+        "route_ticket",
+        {"queue": "billing", "citation_ids": ["billing-001"]},
+        "route-old",
+    )
+    accepted = ToolMessage(
+        content='{"accepted": true, "queue": "billing", "citation_ids": ["billing-001"]}',
+        name="route_ticket",
+        tool_call_id="route-old",
+    )
+    history = [
+        HumanMessage(content=BILLING_TICKET),
+        prior_route,
+        accepted,
+        AIMessage(content="Citations: billing-001"),
+        HumanMessage(content="Thanks, nothing else."),
+    ]
+    model = ScriptedChatModel(responses=[AIMessage(content="Glad that helped.")])
+    config: RunnableConfig = {"recursion_limit": 25}
+
+    async def _invoke() -> object:
+        with use_chat_model(model):
+            return await graph.ainvoke(
+                InputState(messages=history),
+                config,
+                context=Context(),
+            )
+
+    result = asyncio.run(_invoke())
+    assert isinstance(result, dict)
+    assert result["accepted"] is False
+    assert result["trajectory_ok"] is False
+    assert result["fallback_reason"] == FALLBACK_REASON
+    assert recorded_routes() == [{"queue": "human", "citation_ids": []}]
+
+
+def test_graph_run_drops_a_route_recorded_before_it_starts() -> None:
+    route_ticket("shipping", ["shipping-001"])
+    model = ScriptedChatModel(responses=[AIMessage(content="I can answer without routing.")])
+    result = _run(model, BILLING_TICKET)
+    assert result["fallback_reason"] == FALLBACK_REASON
     assert recorded_routes() == [{"queue": "human", "citation_ids": []}]
 
 

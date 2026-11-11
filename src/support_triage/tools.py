@@ -4,9 +4,9 @@ These are the only tools the agent may call. ``route_ticket`` records a route.
 It does not send mail or issue a refund.
 """
 
-from collections.abc import Callable
+from contextvars import ContextVar
 from datetime import date, timedelta
-from typing import Any, TypedDict
+from typing import TypedDict
 
 AS_OF = date(2026, 11, 9)
 QUEUES = frozenset({"billing", "shipping", "refunds", "human"})
@@ -36,7 +36,19 @@ class RouteRecord(TypedDict):
     citation_ids: list[str]
 
 
-_routes: list[RouteRecord] = []
+_routes: ContextVar[list[RouteRecord] | None] = ContextVar(
+    "support_triage_routes", default=None
+)
+_routes.set([])
+
+
+
+def _route_log() -> list[RouteRecord]:
+    routes = _routes.get()
+    if routes is None:
+        routes = []
+        _routes.set(routes)
+    return routes
 
 
 def lookup_order(order_id: str) -> dict[str, str | bool]:
@@ -68,20 +80,26 @@ def route_ticket(queue: str, citation_ids: list[str]) -> dict[str, str | bool | 
     if queue not in QUEUES:
         return {"accepted": False, "queue": queue}
     record: RouteRecord = {"queue": queue, "citation_ids": list(citation_ids)}
-    _routes.append(record)
+    _route_log().append(record)
     return {"accepted": True, "queue": queue, "citation_ids": list(citation_ids)}
 
 
 def recorded_routes() -> list[RouteRecord]:
-    """Return copies of the routes recorded in this process."""
+    """Return copies of the routes recorded for this run."""
     return [
-        {"queue": route["queue"], "citation_ids": list(route["citation_ids"])} for route in _routes
+        {"queue": route["queue"], "citation_ids": list(route["citation_ids"])}
+        for route in _route_log()
     ]
 
 
 def clear_recorded_routes() -> None:
-    """Drop recorded routes. Tests use this to isolate cases."""
-    _routes.clear()
+    """Drop recorded routes. A new graph run and the tests call this.
 
-
-TOOLS: list[Callable[..., Any]] = [lookup_order, route_ticket]
+    The list is cleared in place so a graph task that inherited this context
+    still updates the caller's record.
+    """
+    routes = _routes.get()
+    if routes is None:
+        _routes.set([])
+        return
+    routes.clear()

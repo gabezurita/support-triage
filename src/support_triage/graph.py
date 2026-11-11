@@ -24,7 +24,7 @@ from . import corpus
 from .context import Context
 from .evaluators import citation_subset_ok, model_reply_text
 from .state import InputState, State
-from .tools import lookup_order, route_ticket
+from .tools import clear_recorded_routes, lookup_order, route_ticket
 from .trajectory import model_called_route_ticket
 from .utils import _load_chat_model
 
@@ -101,6 +101,22 @@ def _render_passages(passages: Sequence[dict[str, str]]) -> str:
     return "Retrieved help-center passages:\n\n" + "\n\n".join(blocks)
 
 
+def _current_turn(messages: Sequence[AnyMessage]) -> Sequence[AnyMessage]:
+    """Return the messages from the latest human message onward.
+
+    Args:
+        messages: The conversation so far, including older turns.
+
+    Returns:
+        The current turn. The whole list when it has no human message.
+    """
+    start = 0
+    for index, message in enumerate(messages):
+        if isinstance(message, HumanMessage):
+            start = index
+    return messages[start:]
+
+
 def _retrieve(state: State) -> dict[str, list[dict[str, str]]]:
     """Retrieve help-center passages and store them on state.
 
@@ -110,9 +126,10 @@ def _retrieve(state: State) -> dict[str, list[dict[str, str]]]:
     Returns:
         The passage records for this ticket.
     """
+    clear_recorded_routes()
     passages = [
         {"id": passage.id, "text": passage.text}
-        for passage in corpus.retrieve(_ticket_text(state.messages))
+        for passage in corpus.retrieve(_ticket_text(_current_turn(state.messages)))
     ]
     return {"passages": passages}
 
@@ -184,8 +201,8 @@ def _finish(state: State) -> dict[str, Any]:
     """Accept a completed route, or fall back when ``route_ticket`` was skipped.
 
     A rejected queue such as ``executive`` records nothing. A missing
-    ``route_ticket`` call, including a step-limit stop, routes to ``human`` and
-    fails the trajectory check.
+    ``route_ticket`` call in the current turn, including a step-limit stop,
+    routes to ``human`` and fails the trajectory check. Older turns are ignored.
 
     Args:
         state: The conversation after the model has stopped calling tools.
@@ -193,8 +210,9 @@ def _finish(state: State) -> dict[str, Any]:
     Returns:
         Acceptance, trajectory, and an optional fallback message.
     """
-    called = model_called_route_ticket(state.messages)
-    if _route_was_accepted(state.messages):
+    turn = _current_turn(state.messages)
+    called = model_called_route_ticket(turn)
+    if _route_was_accepted(turn):
         return {"accepted": True, "trajectory_ok": True, "fallback_reason": ""}
     if called:
         return {"accepted": False, "trajectory_ok": True, "fallback_reason": ""}
@@ -243,11 +261,12 @@ def _citation_gate(state: State) -> dict[str, Any]:
     Returns:
         A cleared rejection, or a rejected reply.
     """
+    turn = _current_turn(state.messages)
     retrieved_ids = [passage["id"] for passage in state.passages]
     if citation_subset_ok(
-        _accepted_citation_ids(state.messages),
+        _accepted_citation_ids(turn),
         retrieved_ids,
-        model_reply_text(state.messages),
+        model_reply_text(turn),
     ):
         return {"accepted": True, "citation_rejection": ""}
     return {

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 _KEYWORDS: dict[str, tuple[str, ...]] = {
     "billing-001": ("charged", "charge", "billing", "invoice", "payment"),
-    "shipping-001": ("shipping", "tracking", "where is"),
+    "shipping-001": ("shipping", "tracking", "track", "where is"),
     "refunds-001": ("refund", "return"),
 }
 
