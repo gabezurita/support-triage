@@ -9,7 +9,12 @@ def test_readme_has_quickstart_diagram_and_traces() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "## Quickstart" in readme
     assert "uv run langgraph dev" in readme
+    assert "SUPPORT_TRIAGE_PROVIDER" in readme
+    assert "GEMINI_API_KEY" in readme
     assert "ANTHROPIC_API_KEY" in readme
+    assert "OPENAI_API_KEY" in readme
+    assert "data/evaluation/live_judge.json" in readme
+    assert "billing-double-charge.json" in readme
     assert "LANGSMITH_API_KEY" in readme
     assert "LANGSMITH_PROJECT" in readme
     assert "```mermaid" in readme

@@ -1,5 +1,6 @@
 """Dataset scores, trajectory checks, and fixture-judge agreement."""
 
+import json
 import os
 from pathlib import Path
 
@@ -19,6 +20,15 @@ from support_triage.evaluators import (
 )
 from support_triage.graph import graph
 from support_triage.judge import groundedness_agreement, live_judge_status
+
+LIVE_JUDGE = Path(__file__).resolve().parents[2] / "data" / "evaluation" / "live_judge.json"
+BILLING_TRACE = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "evaluation"
+    / "traces"
+    / "billing-double-charge.json"
+)
 
 NOTE = Path(__file__).resolve().parents[2] / "docs" / "evaluations" / "EVAL-001-citation-gate.md"
 
@@ -98,20 +108,26 @@ def test_fixture_judge_agreement_is_computed() -> None:
 
 
 def test_live_judge_skips_without_a_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUPPORT_TRIAGE_PROVIDER", "gemini")
     monkeypatch.setenv("SUPPORT_TRIAGE_LIVE_JUDGE", "1")
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "present")
     assert live_judge_status() == "skipped"
 
 
 def test_live_judge_stays_offline_without_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUPPORT_TRIAGE_PROVIDER", "gemini")
     monkeypatch.delenv("SUPPORT_TRIAGE_LIVE_JUDGE", raising=False)
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "present")
+    monkeypatch.setenv("GEMINI_API_KEY", "present")
     assert live_judge_status() == "skipped"
-    assert os.environ["ANTHROPIC_API_KEY"] == "present"
+    assert os.environ["GEMINI_API_KEY"] == "present"
 
 
 def test_live_judge_enables_with_key_and_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUPPORT_TRIAGE_PROVIDER", "anthropic")
     monkeypatch.setenv("SUPPORT_TRIAGE_LIVE_JUDGE", "1")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "present")
     assert live_judge_status() == "enabled"
 
@@ -144,3 +160,28 @@ def test_dataset_before_and_after_scores() -> None:
         assert row_id in before
         assert row_id in after
     assert "citation_gate" in graph.nodes
+
+
+def test_checked_in_live_judge_matches_its_scores() -> None:
+    text = LIVE_JUDGE.read_text(encoding="utf-8")
+    payload = json.loads(text)
+    labels = load_human_labels()
+    assert payload["provider"] == "gemini"
+    assert [row["id"] for row in payload["results"]] == [label["id"] for label in labels]
+    human = [bool(label["grounded"]) for label in labels]
+    judged = [bool(row["grounded"]) for row in payload["results"]]
+    assert payload["agreement"] == groundedness_agreement(human, judged)
+    assert "api_key" not in text.lower()
+    assert "AIza" not in text
+
+
+def test_checked_in_billing_trace_is_redacted() -> None:
+    text = BILLING_TRACE.read_text(encoding="utf-8")
+    payload = json.loads(text)
+    assert payload["ticket"] == "Why was I charged twice for order 1001?"
+    assert "billing-001" in [passage["id"] for passage in payload["passages"]]
+    assert payload["routes"][0]["queue"] == "billing"
+    assert payload["routes"][0]["citation_ids"] == ["billing-001"]
+    assert "signature" not in text
+    assert "api_key" not in text.lower()
+    assert "AIza" not in text
