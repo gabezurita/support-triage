@@ -24,6 +24,8 @@ Run the offline suite with:
 uv run pytest
 ```
 
+The Studio walkthrough is [docs/demo.md](docs/demo.md). It covers the tunnel Chrome needs, the four tickets, and where the citation-gate rejection is recorded.
+
 ## Graph
 
 Retrieval runs before the model. The model may call `lookup_order` and `route_ticket`. The citation gate rejects a reply that cites an article the retrieval step did not return. On a step limit, that same decision runs inside the model node so the run can still stop.
