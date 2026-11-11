@@ -26,7 +26,7 @@ from .evaluators import citation_subset_ok, model_reply_text
 from .state import InputState, State
 from .tools import lookup_order, route_ticket
 from .trajectory import model_called_route_ticket
-from .utils import load_chat_model
+from .utils import _load_chat_model
 
 FALLBACK_REASON = (
     "The model omitted route_ticket or hit the step limit. The ticket was routed to human."
@@ -43,7 +43,7 @@ def use_chat_model(model: BaseChatModel) -> Iterator[None]:
     """Point the graph at a scripted model for one offline run.
 
     Args:
-        model: The model ``call_model`` should bind and invoke.
+        model: The scripted model the call_model node binds and invokes.
 
     Yields:
         Control back to the caller while the override is installed.
@@ -59,10 +59,10 @@ def _chat_model(name: str) -> BaseChatModel:
     override = _model_override.get()
     if override is not None:
         return override
-    return load_chat_model(name)
+    return _load_chat_model(name)
 
 
-def ticket_text(messages: Sequence[AnyMessage]) -> str:
+def _ticket_text(messages: Sequence[AnyMessage]) -> str:
     """Join the human messages into the ticket string retrieval sees.
 
     Args:
@@ -86,7 +86,7 @@ def ticket_text(messages: Sequence[AnyMessage]) -> str:
     return "\n".join(parts)
 
 
-def render_passages(passages: Sequence[dict[str, str]]) -> str:
+def _render_passages(passages: Sequence[dict[str, str]]) -> str:
     """Render retrieved passages as model input.
 
     Args:
@@ -101,7 +101,7 @@ def render_passages(passages: Sequence[dict[str, str]]) -> str:
     return "Retrieved help-center passages:\n\n" + "\n\n".join(blocks)
 
 
-def retrieve(state: State) -> dict[str, list[dict[str, str]]]:
+def _retrieve(state: State) -> dict[str, list[dict[str, str]]]:
     """Retrieve help-center passages and store them on state.
 
     Args:
@@ -112,12 +112,12 @@ def retrieve(state: State) -> dict[str, list[dict[str, str]]]:
     """
     passages = [
         {"id": passage.id, "text": passage.text}
-        for passage in corpus.retrieve(ticket_text(state.messages))
+        for passage in corpus.retrieve(_ticket_text(state.messages))
     ]
     return {"passages": passages}
 
 
-async def call_model(state: State, runtime: Runtime[Context]) -> dict[str, Any]:
+async def _call_model(state: State, runtime: Runtime[Context]) -> dict[str, Any]:
     """Call the model with retrieved passages and the triage tools.
 
     On the last allowed step, the route decision is applied here. Scheduling
@@ -139,7 +139,7 @@ async def call_model(state: State, runtime: Runtime[Context]) -> dict[str, Any]:
         await model.ainvoke(
             [
                 {"role": "system", "content": system_message},
-                {"role": "system", "content": render_passages(state.passages)},
+                {"role": "system", "content": _render_passages(state.passages)},
                 *state.messages,
             ]
         ),
@@ -180,7 +180,7 @@ def _route_was_accepted(messages: Sequence[AnyMessage]) -> bool:
     return False
 
 
-def finish(state: State) -> dict[str, Any]:
+def _finish(state: State) -> dict[str, Any]:
     """Accept a completed route, or fall back when ``route_ticket`` was skipped.
 
     A rejected queue such as ``executive`` records nothing. A missing
@@ -230,7 +230,7 @@ def _accepted_citation_ids(messages: Sequence[AnyMessage]) -> list[str]:
     return chosen
 
 
-def citation_gate(state: State) -> dict[str, Any]:
+def _citation_gate(state: State) -> dict[str, Any]:
     """Reject a reply whose citations were not retrieved.
 
     The ids passed to ``route_ticket`` must match the ids in the reply and be
@@ -269,7 +269,7 @@ def _finalize_stop(state: State, response: AIMessage) -> dict[str, Any]:
     Returns:
         The combined state update, including any gate rejection.
     """
-    outcome = finish(State(messages=[*state.messages, response]))
+    outcome = _finish(State(messages=[*state.messages, response]))
     extra = outcome.pop("messages", [])
     messages: list[AnyMessage] = [response]
     if isinstance(extra, list):
@@ -277,7 +277,7 @@ def _finalize_stop(state: State, response: AIMessage) -> dict[str, Any]:
     if not outcome.get("accepted"):
         return {**outcome, "messages": messages}
     preview = State(messages=[*state.messages, *messages], passages=list(state.passages))
-    gated = citation_gate(preview)
+    gated = _citation_gate(preview)
     gate_extra = gated.pop("messages", [])
     if isinstance(gate_extra, list):
         messages.extend(message for message in gate_extra if isinstance(message, AIMessage))
@@ -285,16 +285,16 @@ def _finalize_stop(state: State, response: AIMessage) -> dict[str, Any]:
 
 
 builder = StateGraph(State, input_schema=InputState, context_schema=Context)
-builder.add_node("retrieve", retrieve)
-builder.add_node("call_model", call_model)
+builder.add_node("retrieve", _retrieve)
+builder.add_node("call_model", _call_model)
 builder.add_node("tools", ToolNode([lookup_order, route_ticket]))
-builder.add_node("finish", finish)
-builder.add_node("citation_gate", citation_gate)
+builder.add_node("finish", _finish)
+builder.add_node("citation_gate", _citation_gate)
 builder.add_edge("__start__", "retrieve")
 builder.add_edge("retrieve", "call_model")
 
 
-def route_model_output(state: State) -> Literal["__end__", "finish", "tools"]:
+def _route_model_output(state: State) -> Literal["__end__", "finish", "tools"]:
     """Choose the next node from the model's last message.
 
     Args:
@@ -315,7 +315,7 @@ def route_model_output(state: State) -> Literal["__end__", "finish", "tools"]:
     return "tools"
 
 
-def route_after_finish(state: State) -> Literal["citation_gate", "__end__"]:
+def _route_after_finish(state: State) -> Literal["citation_gate", "__end__"]:
     """Send an accepted route through the citation gate.
 
     Args:
@@ -329,8 +329,8 @@ def route_after_finish(state: State) -> Literal["citation_gate", "__end__"]:
     return "__end__"
 
 
-builder.add_conditional_edges("call_model", route_model_output)
+builder.add_conditional_edges("call_model", _route_model_output)
 builder.add_edge("tools", "call_model")
-builder.add_conditional_edges("finish", route_after_finish)
+builder.add_conditional_edges("finish", _route_after_finish)
 builder.add_edge("citation_gate", "__end__")
 graph = builder.compile(name="support-triage")

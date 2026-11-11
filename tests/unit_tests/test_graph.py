@@ -205,11 +205,25 @@ def test_step_limit_without_route_ticket_falls_back_to_human() -> None:
     assert recorded_routes() == [{"queue": "human", "citation_ids": []}]
 
 
-def test_ticket_text_handles_content_blocks() -> None:
-    from support_triage.graph import ticket_text
+def test_content_block_ticket_retrieves_the_billing_article() -> None:
+    model = ScriptedChatModel(responses=[AIMessage(content="I can answer without routing.")])
+    config: RunnableConfig = {"recursion_limit": 25}
 
-    msg = HumanMessage(content=[{"type": "text", "text": "Why was I charged twice?"}])
-    assert ticket_text([msg]) == "Why was I charged twice?"
+    async def _invoke() -> object:
+        with use_chat_model(model):
+            return await graph.ainvoke(
+                InputState(
+                    messages=[HumanMessage(content=[{"type": "text", "text": BILLING_TICKET}])]
+                ),
+                config,
+                context=Context(),
+            )
+
+    result = asyncio.run(_invoke())
+    assert isinstance(result, dict)
+    passages = result["passages"]
+    assert isinstance(passages, list)
+    assert [passage["id"] for passage in passages] == ["billing-001"]
 
 
 def test_step_limit_with_accepted_route_runs_citation_gate() -> None:
