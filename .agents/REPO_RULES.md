@@ -1,6 +1,6 @@
 # Repository Rules: support-triage
 
-GitHub issue 1 holds the acceptance criteria. The implementation plan is the comment on that issue.
+GitHub issue 1 is the delivered MVP. Issue 19 is what comes next, including later work. Implementation plans are the comments on its sub-issues.
 
 ## Product constraints
 
