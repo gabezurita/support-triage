@@ -6,7 +6,7 @@ The graph diagram is in the [README](../README.md#graph).
 
 ## Start the server
 
-From the repository root, with `GEMINI_API_KEY` set. The default provider is `gemini`.
+Follow the [Quickstart](../README.md#quickstart), then run this from the repository root with `GEMINI_API_KEY` set. The default provider is `gemini`.
 
 ```bash
 uv sync

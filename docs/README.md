@@ -1,6 +1,6 @@
 # Documentation
 
-Decisions live in [`adr/`](adr/). Evaluation notes live in [`evaluations/`](evaluations/). Later implementation plans would live in `plans/`. Acceptance criteria, and the implementation plan, are on [issue 1](https://github.com/gabezurita/support-triage/issues/1).
+Decisions live in [`adr/`](adr/). Evaluation notes live in [`evaluations/`](evaluations/). Later implementation plans would live in `plans/`. The delivered MVP is [issue 1](https://github.com/gabezurita/support-triage/issues/1). What comes next, including later work, is [issue 19](https://github.com/gabezurita/support-triage/issues/19).
 
 ## Directory taxonomy
 
