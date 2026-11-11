@@ -48,3 +48,6 @@ class State(InputState):
 
     fallback_reason: str = ""
     """Set when the graph routes to human because the model never called ``route_ticket``."""
+
+    citation_rejection: str = ""
+    """Set when the citation gate rejects the reply."""

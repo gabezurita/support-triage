@@ -104,14 +104,16 @@ def test_billing_ticket_retrieves_injects_and_routes() -> None:
     assert "duplicate capture" in model.seen[0][1]
     assert model.bound_tool_names == ["lookup_order", "route_ticket"]
     assert recorded_routes() == [{"queue": "billing", "citation_ids": ["billing-001"]}]
-    final = updates[-1]["finish"]
-    assert isinstance(final, dict)
-    assert final["accepted"] is True
-    assert final["trajectory_ok"] is True
+    finish_update = next(update["finish"] for update in updates if "finish" in update)
+    assert isinstance(finish_update, dict)
+    assert finish_update["accepted"] is True
+    gate_update = updates[-1]["citation_gate"]
+    assert isinstance(gate_update, dict)
+    assert gate_update["accepted"] is True
 
 
 def test_order_9999_is_not_found_and_reply_has_no_tracking_number() -> None:
-    reply = "Order 9999 was not found, so there is no shipment to report."
+    reply = "Order 9999 was not found, so there is no shipment to report. Citations: shipping-001"
     model = ScriptedChatModel(
         responses=[
             _tool_message("lookup_order", {"order_id": "9999"}, "lookup-9999"),
@@ -132,6 +134,8 @@ def test_order_9999_is_not_found_and_reply_has_no_tracking_number() -> None:
     assert "9999" in str(lookup.content)
     assert "tracking" not in _reply_text(result).casefold()
     assert recorded_routes() == [{"queue": "human", "citation_ids": ["shipping-001"]}]
+    assert result["accepted"] is True
+    assert result["citation_rejection"] == ""
 
 
 def test_missing_route_ticket_defaults_to_human_and_fails_trajectory() -> None:
@@ -164,6 +168,29 @@ def test_executive_queue_is_rejected_and_records_nothing() -> None:
     assert recorded_routes() == []
 
 
+def test_shipping_citation_after_billing_retrieval_is_rejected() -> None:
+    model = ScriptedChatModel(
+        responses=[
+            _tool_message(
+                "route_ticket",
+                {"queue": "billing", "citation_ids": ["shipping-001"]},
+                "route-shipping",
+            ),
+            AIMessage(content="The shipment is still at the warehouse. Citations: shipping-001"),
+        ]
+    )
+    result = _run(model, BILLING_TICKET)
+    messages = result["messages"]
+    assert isinstance(messages, list)
+    assert result["accepted"] is False
+    assert result["citation_rejection"]
+    assert any(
+        isinstance(message, AIMessage)
+        and message.response_metadata.get("source") == "citation_gate"
+        for message in messages
+    )
+
+
 def test_step_limit_without_route_ticket_falls_back_to_human() -> None:
     model = ScriptedChatModel(
         responses=[_tool_message("lookup_order", {"order_id": "1001"}, "lookup-loop")]
@@ -183,3 +210,26 @@ def test_ticket_text_handles_content_blocks() -> None:
 
     msg = HumanMessage(content=[{"type": "text", "text": "Why was I charged twice?"}])
     assert ticket_text([msg]) == "Why was I charged twice?"
+
+
+def test_step_limit_with_accepted_route_runs_citation_gate() -> None:
+    reply = (
+        "A second charge is a pending authorization or a duplicate capture. Citations: billing-001"
+    )
+    model = ScriptedChatModel(
+        responses=[
+            _tool_message(
+                "route_ticket",
+                {"queue": "billing", "citation_ids": ["billing-001"]},
+                "route-billing",
+            ),
+            AIMessage(content=reply),
+        ]
+    )
+    result = _run(model, BILLING_TICKET, recursion_limit=5)
+    messages = result["messages"]
+    assert isinstance(messages, list)
+    assert result["accepted"] is True
+    assert result["trajectory_ok"] is True
+    assert result["citation_rejection"] == ""
+    assert recorded_routes() == [{"queue": "billing", "citation_ids": ["billing-001"]}]

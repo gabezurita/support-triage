@@ -116,7 +116,7 @@ def test_live_judge_enables_with_key_and_opt_in(monkeypatch: pytest.MonkeyPatch)
     assert live_judge_status() == "enabled"
 
 
-def test_dataset_before_scores_and_note() -> None:
+def test_dataset_before_and_after_scores() -> None:
     summary = run_dataset()
     by_id = {case.id: case for case in summary.cases}
     assert [case.id for case in summary.cases] == [
@@ -125,18 +125,22 @@ def test_dataset_before_scores_and_note() -> None:
         "missing-order-9999",
         "multi-article",
     ]
+    assert by_id["billing-double-charge"].accepted is True
+    assert by_id["billing-double-charge"].citation_subset is True
     assert by_id["multi-article"].citation_subset is False
-    assert by_id["multi-article"].accepted is True
-    assert by_id["billing-double-charge"].queue_ok is True
+    assert by_id["multi-article"].accepted is False
     assert by_id["late-refund"].queue_ok is True
     assert summary.queue_accuracy == 1
     assert summary.trajectory_rate == 1
     assert summary.citation_subset_rate == 0.75
-    assert summary.citation_score == 0.75
-    assert summary.ungrounded_accepted == 1
+    assert summary.citation_score == 1
+    assert summary.ungrounded_accepted == 0
     note = NOTE.read_text(encoding="utf-8")
-    assert "## After" not in note
-    assert "0.75" in note
+    before, after = note.split("## After", maxsplit=1)
+    assert "0.75" in before
+    assert "1.00" in after
     for row in load_dataset():
-        assert str(row["id"]) in note
-    assert "citation_gate" not in graph.nodes
+        row_id = str(row["id"])
+        assert row_id in before
+        assert row_id in after
+    assert "citation_gate" in graph.nodes
