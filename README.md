@@ -43,6 +43,10 @@ flowchart TD
     citation_gate --> endNode
 ```
 
+`start` is the new ticket. `retrieve` searches the checked-in help center and writes the matching articles onto `passages` before the model runs. `call_model` reads those passages and may call `lookup_order` and `route_ticket`. `tools` runs the calls from that step and returns to `call_model`. `finish` records whether `route_ticket` was accepted. `citation_gate` accepts the reply when the ids passed to `route_ticket` are among the retrieved articles and the reply cites that same set. `end` is the stop.
+
+The arrow labels are the choices between those boxes. `tool call` means the model asked for `lookup_order` or `route_ticket`, so the run goes to `tools` and then back to `call_model`. `reply` means the model stopped calling tools, so the run goes to `finish`. `accepted` means `route_ticket` recorded a queue, so the run goes through `citation_gate` before `end`. `no accepted route` means the model skipped `route_ticket` or the queue was rejected. A skipped call still records `human` with no citation ids, sets `accepted` false, and fails the trajectory check. A rejected queue records nothing. Either way the run goes to `end` and skips the gate. `step limit` means too few steps remain for another node, so `call_model` applies that same `finish` and `citation_gate` decision itself and the arrow goes to `end`.
+
 ## Traces
 
 When `LANGSMITH_API_KEY` is set, `uv run langgraph dev` sends traces to the LangSmith project named by `LANGSMITH_PROJECT`. The example project name is `support-triage`. Open that project in LangSmith to see the run.
