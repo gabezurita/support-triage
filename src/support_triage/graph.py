@@ -20,13 +20,13 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 from langgraph.runtime import Runtime
 
-from . import corpus
-from .context import Context
-from .evaluators import citation_subset_ok, model_reply_text
-from .state import InputState, State
-from .tools import clear_recorded_routes, lookup_order, route_ticket
-from .trajectory import model_called_route_ticket
-from .utils import _load_chat_model
+from support_triage import corpus
+from support_triage.context import Context
+from support_triage.evaluators import citation_subset_ok, model_reply_text
+from support_triage.state import InputState, State
+from support_triage.tools import clear_recorded_routes, lookup_order, route_ticket
+from support_triage.trajectory import model_called_route_ticket
+from support_triage.utils import _load_chat_model
 
 FALLBACK_REASON = (
     "The model omitted route_ticket or hit the step limit. The ticket was routed to human."
