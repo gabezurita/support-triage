@@ -102,9 +102,13 @@ def _message_text(message: BaseMessage) -> str:
 
 def _parse_score(text: str) -> dict[str, bool]:
     body = text.strip()
-    if body.startswith("```"):
-        lines = [line for line in body.splitlines() if not line.startswith("```")]
+    if "```" in body:
+        lines = [line for line in body.splitlines() if not line.strip().startswith("```")]
         body = "\n".join(lines).strip()
+    if "{" in body and "}" in body:
+        start = body.find("{")
+        end = body.rfind("}") + 1
+        body = body[start:end]
     parsed: Any = json.loads(body)
     if not isinstance(parsed, dict):
         message = "The judge response must be a JSON object."

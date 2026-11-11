@@ -19,6 +19,7 @@ _SECRET_FIELDS = frozenset(
         "api_key",
         "anthropic_api_key",
         "authorization",
+        "gemini_api_key",
         "google_api_key",
         "openai_api_key",
         "token",
@@ -77,10 +78,11 @@ def resolve_provider(name: str | None = None) -> ProviderSpec:
     Raises:
         ValueError: The name is not gemini, anthropic, or codex.
     """
-    chosen = name if name is not None else os.environ.get("SUPPORT_TRIAGE_PROVIDER", "gemini")
+    raw = name if name is not None else os.environ.get("SUPPORT_TRIAGE_PROVIDER", "gemini")
+    chosen = raw.strip().casefold()
     spec = PROVIDERS.get(chosen)
     if spec is None:
-        message = f"Unknown provider {chosen}. Choose gemini, anthropic, or codex."
+        message = f"Unknown provider {raw}. Choose gemini, anthropic, or codex."
         raise ValueError(message)
     return spec
 

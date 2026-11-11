@@ -118,7 +118,13 @@ def test_load_chat_model_passes_the_provider_key(monkeypatch: pytest.MonkeyPatch
 
 
 def test_judge_reply_reads_json() -> None:
-    model = ScriptedChatModel(responses=[AIMessage(content='{"grounded": true, "helpful": false}')])
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(
+                content='Here is the score:\n```json\n{"grounded": true, "helpful": false}\n```\n'
+            )
+        ]
+    )
     score = judge_reply(
         model,
         ticket="Why was I charged twice for order 1001?",
@@ -134,8 +140,16 @@ def test_redact_strips_secret_values_and_key_fields() -> None:
         {
             "note": "prefix gemini-key suffix",
             "api_key": "gemini-key",
+            "gemini_api_key": "raw-gemini-key",
             "nested": {"authorization": "Bearer gemini-key", "queue": "billing"},
         },
         ["gemini-key"],
     )
     assert cleaned == {"note": "prefix [redacted] suffix", "nested": {"queue": "billing"}}
+
+
+def test_resolve_provider_tolerates_case_and_whitespace(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear(monkeypatch)
+    assert resolve_provider("  Gemini  ").name == "gemini"
+    monkeypatch.setenv("SUPPORT_TRIAGE_PROVIDER", " Anthropic ")
+    assert resolve_provider().name == "anthropic"

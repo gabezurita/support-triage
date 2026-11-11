@@ -51,8 +51,9 @@ def score_labels() -> dict[str, Any]:
     spec = resolve_provider()
     model = load_chat_model(spec.model_name)
     articles = help_center_text()
+    labels = load_human_labels()
     results: list[dict[str, Any]] = []
-    for label in load_human_labels():
+    for label in labels:
         citation_ids = label["citation_ids"]
         if not isinstance(citation_ids, list):
             message = f"{label['id']} is missing citation ids"
@@ -65,7 +66,7 @@ def score_labels() -> dict[str, Any]:
             articles=articles,
         )
         results.append({"id": str(label["id"]), **score})
-    human = [bool(label["grounded"]) for label in load_human_labels()]
+    human = [bool(label["grounded"]) for label in labels]
     judged = [bool(result["grounded"]) for result in results]
     return {
         "provider": spec.name,
