@@ -4,7 +4,7 @@ GitHub issue 1 is the delivered MVP. Issue 19 is what comes next, including late
 
 ## Product constraints
 
-- Python 3.12 and uv. Ruff and mypy use the settings in `pyproject.toml`. There is no coverage fail-under.
+- Python 3.12 is pinned in `.python-version`. uv installs that interpreter. Ruff and mypy use the settings in `pyproject.toml`. There is no coverage fail-under.
 - Checks: `uv run ruff check .`, `uv run mypy src`, and `uv run pytest`.
 - Commits are `type: summary`, with no scope and no ticket id.
 - The only side effect is `route_ticket`. Do not send mail, issue a refund, or call agent-orchestrator.

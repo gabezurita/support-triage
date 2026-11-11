@@ -8,7 +8,7 @@ The delivered MVP is [issue 1](https://github.com/gabezurita/support-triage/issu
 
 ## Quickstart
 
-Python 3.12. From the repository root:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/). From the repository root, `uv sync` reads `.python-version` and installs Python 3.12.
 
 ```bash
 uv sync
@@ -16,7 +16,7 @@ cp .env.example .env
 uv run langgraph dev
 ```
 
-Set `SUPPORT_TRIAGE_PROVIDER` to `gemini`, `anthropic`, or `codex`. The default is `gemini`. Gemini reads `GEMINI_API_KEY` or `GOOGLE_API_KEY`. Anthropic reads `ANTHROPIC_API_KEY`. Codex reads `OPENAI_API_KEY` and calls `gpt-5.3-codex`. `.env.example` also names `LANGSMITH_API_KEY` and `LANGSMITH_PROJECT`. The unit tests, the trajectory checks, and the dataset evaluation do not call a provider.
+Put a provider key in `.env` before the first live ticket. Set `SUPPORT_TRIAGE_PROVIDER` to `gemini`, `anthropic`, or `codex`. The default is `gemini`. Gemini reads `GEMINI_API_KEY` or `GOOGLE_API_KEY`. Anthropic reads `ANTHROPIC_API_KEY`. Codex reads `OPENAI_API_KEY` and calls `gpt-5.3-codex`. `.env.example` also names `LANGSMITH_API_KEY` and `LANGSMITH_PROJECT`. The unit tests, the trajectory checks, and the dataset evaluation do not call a provider.
 
 Run the offline suite with:
 

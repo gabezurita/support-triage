@@ -20,10 +20,14 @@ def test_readme_has_quickstart_diagram_and_traces() -> None:
     assert "```mermaid" in readme
     assert "citation_gate" in readme
     assert "docs/demo.md" in readme
+    assert "https://docs.astral.sh/uv/getting-started/installation/" in readme
+    assert ".python-version" in readme
+    assert (ROOT / ".python-version").read_text(encoding="utf-8").strip() == "3.12"
     assert "https://github.com/gabezurita/support-triage/issues/1" in readme
     assert "https://github.com/gabezurita/support-triage/issues/19" in readme
     assert "land with the submission docs" not in readme
-    assert (ROOT / "docs" / "demo.md").is_file()
+    demo = (ROOT / "docs" / "demo.md").read_text(encoding="utf-8")
+    assert "../README.md#quickstart" in demo
 
 
 def test_docs_index_lists_adr_plans_and_evaluations() -> None:
