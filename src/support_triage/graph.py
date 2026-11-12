@@ -164,6 +164,35 @@ def _retrieve(state: State) -> dict[str, Any]:
     return update
 
 
+def _flatten_text_content(message: AIMessage) -> AIMessage:
+    """Join a text-only content list into one string.
+
+    Gemini can return a text block followed by a bare string. Studio's chat
+    pane draws the block and skips the string.
+
+    Args:
+        message: The model message for this step.
+
+    Returns:
+        The same message when its content is already a string or includes a
+        non-text block. Otherwise a copy whose content is the joined text.
+    """
+    content = message.content
+    if isinstance(content, str) or not isinstance(content, list):
+        return message
+    parts: list[str] = []
+    for item in content:
+        if isinstance(item, str):
+            parts.append(item)
+            continue
+        text = item.get("text") if isinstance(item, dict) else None
+        if isinstance(item, dict) and item.get("type") == "text" and isinstance(text, str):
+            parts.append(text)
+            continue
+        return message
+    return message.model_copy(update={"content": "".join(parts)})
+
+
 async def _call_model(state: State, runtime: Runtime[Context]) -> dict[str, Any]:
     """Call the model with retrieved passages and the triage tools.
 
@@ -191,6 +220,7 @@ async def _call_model(state: State, runtime: Runtime[Context]) -> dict[str, Any]
             ]
         ),
     )
+    response = _flatten_text_content(response)
     # Stop inside this node once fewer than three steps remain. A tool round
     # trip would otherwise be cut off before the fallback can run.
     must_stop = state.is_last_step or state.remaining_steps <= 2

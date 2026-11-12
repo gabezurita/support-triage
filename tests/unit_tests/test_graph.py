@@ -272,6 +272,32 @@ def test_later_ticket_drops_the_earlier_ticket() -> None:
     assert any(MISSING_ORDER_TICKET in text for text in model.seen[0])
 
 
+def test_split_model_reply_is_saved_as_one_string() -> None:
+    reply = AIMessage(
+        content=[
+            {
+                "type": "text",
+                "text": "I have routed your ticket to a",
+                "index": 0,
+            },
+            " human agent for further assistance.",
+        ]
+    )
+    result = _run(ScriptedChatModel(responses=[reply]), BILLING_TICKET)
+    messages = result["messages"]
+    assert isinstance(messages, list)
+    reply_message = next(
+        message
+        for message in messages
+        if isinstance(message, AIMessage)
+        and not message.tool_calls
+        and message.content != FALLBACK_REASON
+    )
+    assert reply_message.content == (
+        "I have routed your ticket to a human agent for further assistance."
+    )
+
+
 def test_graph_run_drops_a_route_recorded_before_it_starts() -> None:
     route_ticket("shipping", ["shipping-001"])
     model = ScriptedChatModel(responses=[AIMessage(content="I can answer without routing.")])
