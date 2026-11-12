@@ -27,7 +27,7 @@ Leave the process running while you present. That hostname belongs to the proces
 
 The graph is `agent`. Submit one sentence, then open each node.
 
-`retrieve` writes the help-center passages onto `passages` before the model runs. `call_model` may call `lookup_order` and calls `route_ticket` before a reply is accepted. `tools` runs those calls. `route_ticket` records `billing`, `shipping`, `refunds`, or `human`. It does not send mail or issue a refund. `finish` accepts the route. If the model never called `route_ticket`, the ticket goes to `human` and the trajectory check fails. `citation_gate` accepts the reply when every cited article id is in `passages`. A citation outside that set leaves `accepted` false and sets `citation_rejection`.
+`retrieve` writes the help-center passages onto `passages` before the model runs. A later ticket on the same thread drops the earlier ticket from `messages` before the model runs. Each earlier run stays in the Turns list. `call_model` may call `lookup_order` and calls `route_ticket` before a reply is accepted. `tools` runs those calls. `route_ticket` records `billing`, `shipping`, `refunds`, or `human`. It does not send mail or issue a refund. `finish` accepts the route. If the model never called `route_ticket`, the ticket goes to `human` and the trajectory check fails. `citation_gate` accepts the reply when every cited article id is in `passages`. A citation outside that set leaves `accepted` false and sets `citation_rejection`.
 
 Read `passages`, the tool calls in `messages`, `accepted`, and `citation_rejection`.
 

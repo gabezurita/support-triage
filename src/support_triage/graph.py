@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal, cast
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, RemoveMessage, ToolMessage
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 from langgraph.runtime import Runtime
@@ -117,21 +117,51 @@ def _current_turn(messages: Sequence[AnyMessage]) -> Sequence[AnyMessage]:
     return messages[start:]
 
 
-def _retrieve(state: State) -> dict[str, list[dict[str, str]]]:
-    """Retrieve help-center passages and store them on state.
+def _earlier_turn_removals(messages: Sequence[AnyMessage]) -> list[RemoveMessage]:
+    """Mark messages from earlier tickets for removal.
+
+    Args:
+        messages: The thread, including the latest human message.
+
+    Returns:
+        Removals for every message before the current turn.
+    """
+    current_ids = {message.id for message in _current_turn(messages) if message.id}
+    return [
+        RemoveMessage(id=message.id)
+        for message in messages
+        if message.id and message.id not in current_ids
+    ]
+
+
+def _retrieve(state: State) -> dict[str, Any]:
+    """Retrieve help-center passages for the latest ticket.
+
+    Earlier tickets are removed so this run's state and the model see one ticket.
+    The previous route fields are cleared until this ticket finishes.
 
     Args:
         state: The current conversation state.
 
     Returns:
-        The passage records for this ticket.
+        Passages for this ticket, cleared route fields, and removals for earlier tickets.
     """
     clear_recorded_routes()
+    turn = _current_turn(state.messages)
     passages = [
-        {"id": passage.id, "text": passage.text}
-        for passage in corpus.retrieve(_ticket_text(_current_turn(state.messages)))
+        {"id": passage.id, "text": passage.text} for passage in corpus.retrieve(_ticket_text(turn))
     ]
-    return {"passages": passages}
+    update: dict[str, Any] = {
+        "passages": passages,
+        "accepted": False,
+        "trajectory_ok": False,
+        "fallback_reason": "",
+        "citation_rejection": "",
+    }
+    expired = _earlier_turn_removals(state.messages)
+    if expired:
+        update["messages"] = expired
+    return update
 
 
 async def _call_model(state: State, runtime: Runtime[Context]) -> dict[str, Any]:
@@ -157,7 +187,7 @@ async def _call_model(state: State, runtime: Runtime[Context]) -> dict[str, Any]
             [
                 {"role": "system", "content": system_message},
                 {"role": "system", "content": _render_passages(state.passages)},
-                *state.messages,
+                *_current_turn(state.messages),
             ]
         ),
     )
