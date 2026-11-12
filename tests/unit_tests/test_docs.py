@@ -18,6 +18,7 @@ def test_readme_has_quickstart_diagram_and_traces() -> None:
     assert "LANGSMITH_API_KEY" in readme
     assert "LANGSMITH_PROJECT" in readme
     assert "```mermaid" in readme
+    assert 'tools["tools<br/>lookup_order<br/>route_ticket"]' in readme
     assert "citation_gate" in readme
     assert "docs/demo.md" in readme
     assert "https://docs.astral.sh/uv/getting-started/installation/" in readme
