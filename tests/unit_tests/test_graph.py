@@ -242,6 +242,36 @@ def test_follow_up_without_route_ticket_falls_back_to_human() -> None:
     assert recorded_routes() == [{"queue": "human", "citation_ids": []}]
 
 
+def test_later_ticket_drops_the_earlier_ticket() -> None:
+    history = [
+        HumanMessage(content=BILLING_TICKET, id="turn-1-human"),
+        AIMessage(content="Citations: billing-001", id="turn-1-reply"),
+        HumanMessage(content=MISSING_ORDER_TICKET, id="turn-2-human"),
+    ]
+    model = ScriptedChatModel(responses=[AIMessage(content="Order 9999 was not found.")])
+    config: RunnableConfig = {"recursion_limit": 25}
+
+    async def _invoke() -> object:
+        with use_chat_model(model):
+            return await graph.ainvoke(
+                InputState(messages=history),
+                config,
+                context=Context(),
+            )
+
+    result = asyncio.run(_invoke())
+    assert isinstance(result, dict)
+    messages = result["messages"]
+    assert isinstance(messages, list)
+    texts = [message.content for message in messages if isinstance(message.content, str)]
+    assert BILLING_TICKET not in texts
+    assert "Citations: billing-001" not in texts
+    assert MISSING_ORDER_TICKET in texts
+    assert model.seen
+    assert all(BILLING_TICKET not in text for text in model.seen[0])
+    assert any(MISSING_ORDER_TICKET in text for text in model.seen[0])
+
+
 def test_graph_run_drops_a_route_recorded_before_it_starts() -> None:
     route_ticket("shipping", ["shipping-001"])
     model = ScriptedChatModel(responses=[AIMessage(content="I can answer without routing.")])
