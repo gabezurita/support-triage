@@ -34,7 +34,7 @@ Retrieval runs before the model. The model may call `lookup_order` and `route_ti
 flowchart TD
     startNode([start]) --> retrieve
     retrieve --> call_model
-    call_model -->|tool call| tools
+    call_model -->|tool call| tools["tools<br/>lookup_order<br/>route_ticket"]
     tools --> call_model
     call_model -->|reply| finish
     call_model -->|step limit| endNode([end])
@@ -43,7 +43,7 @@ flowchart TD
     citation_gate --> endNode
 ```
 
-Each name in the diagram is one box or one arrow.
+Each box is one graph node, and each arrow label is one branch. The tools box lists `lookup_order` and `route_ticket`.
 
 Boxes:
 
